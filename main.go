@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func main() {
@@ -55,19 +57,21 @@ func child() {
 
 }
 
+// Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
 func setResourceLimits() {
-	fmt.Println("Changing resource limits")
-	//unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: uint64(5), Max: uint64(5)})
-	syscall.Setrlimit(syscall.RLIMIT_CPU, &syscall.Rlimit{Cur: 5, Max: 500})
-	syscall.Setrlimit(syscall.RLIMIT_NOFILE, &syscall.Rlimit{Cur: 50, Max: 500})
+	fmt.Println("[i] Changing resource limits")
+
+	unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: 5, Max: 10})
+	unix.Setrlimit(unix.RLIMIT_NOFILE, &unix.Rlimit{Cur: 50, Max: 500})
 }
 
 func getResourceLimits() {
-	var getc syscall.Rlimit
-	var getf syscall.Rlimit
+	var getc unix.Rlimit
+	var getf unix.Rlimit
 
-	syscall.Getrlimit(syscall.RLIMIT_CORE, &getc)
-	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &getf)
+	unix.Getrlimit(unix.RLIMIT_CPU, &getc)
+	unix.Getrlimit(unix.RLIMIT_NOFILE, &getf)
+
 	fmt.Println("CPU Limit: ", getc)
 	fmt.Println("FILE Limit: ", getf)
 }
