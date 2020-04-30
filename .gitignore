@@ -19,3 +19,6 @@
 
 # *NIX binary
 litebox
+
+# test directory
+tests/
