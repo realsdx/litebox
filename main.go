@@ -6,31 +6,38 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/docker/docker/pkg/reexec"
 	"golang.org/x/sys/unix"
 )
 
-func main() {
-	fmt.Println("LiteBox Starting ...")
+func init() {
+	fmt.Printf("init start, os.Args = %+v\n", os.Args)
+	reexec.Register("child", child)
 
-	switch os.Args[1] {
-	case "run":
-		run()
-	case "child":
-		child()
-	default:
-		panic("An Error occured")
+	if reexec.Init() {
+		fmt.Println("Reexec init retured non-zero")
+		os.Exit(0)
 	}
 }
 
-func run() {
-	fmt.Printf("Running %s in PID: %d\n", os.Args[2:], os.Getpid())
+func main() {
+	fmt.Println("LiteBox Starting ...")
+	fmt.Printf("main start, os.Args = %+v\n", os.Args)
 
-	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+	mainConf := HandleFlags()
+
+	if mainConf.Exec == "" {
+		fmt.Println("No executable provided. Put executable path as --exec=<path>")
+		os.Exit(1)
+	}
+
+	cmd := reexec.Command(append([]string{"child"}, os.Args[1:]...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+		Pdeathsig:  syscall.SIGTERM,
 	}
 
 	check(cmd.Run())
@@ -38,9 +45,10 @@ func run() {
 }
 
 func child() {
-	fmt.Printf("Running %s in PID: %d\n", os.Args[2:], os.Getpid())
+	fmt.Printf("child start, os.Args = %+v\t in PID: %d\n", os.Args, os.Getpid())
+	conf := HandleFlags()
 
-	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	cmd := exec.Command(conf.Exec)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -51,17 +59,17 @@ func child() {
 	check(syscall.Sethostname([]byte("litebox")))
 
 	getResourceLimits()
-	setResourceLimits()
+	setResourceLimits(conf.CPU)
 	getResourceLimits()
 	check(cmd.Run())
 
 }
 
 // Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
-func setResourceLimits() {
+func setResourceLimits(cpu int) {
 	fmt.Println("[i] Changing resource limits")
 
-	unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: 5, Max: 10})
+	unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: uint64(cpu), Max: uint64(cpu)})
 	unix.Setrlimit(unix.RLIMIT_NOFILE, &unix.Rlimit{Cur: 50, Max: 500})
 }
 
