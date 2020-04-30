@@ -46,10 +46,30 @@ func child() {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Credential: &syscall.Credential{Uid: uint32(65534), Gid: uint32(65534)},
 	}
-
 	check(syscall.Sethostname([]byte("litebox")))
+
+	getResourceLimits()
+	setResourceLimits()
+	getResourceLimits()
 	check(cmd.Run())
 
+}
+
+func setResourceLimits() {
+	fmt.Println("Changing resource limits")
+	//unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: uint64(5), Max: uint64(5)})
+	syscall.Setrlimit(syscall.RLIMIT_CPU, &syscall.Rlimit{Cur: 5, Max: 500})
+	syscall.Setrlimit(syscall.RLIMIT_NOFILE, &syscall.Rlimit{Cur: 50, Max: 500})
+}
+
+func getResourceLimits() {
+	var getc syscall.Rlimit
+	var getf syscall.Rlimit
+
+	syscall.Getrlimit(syscall.RLIMIT_CORE, &getc)
+	syscall.Getrlimit(syscall.RLIMIT_NOFILE, &getf)
+	fmt.Println("CPU Limit: ", getc)
+	fmt.Println("FILE Limit: ", getf)
 }
 
 func check(err error) {
