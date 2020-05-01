@@ -58,30 +58,34 @@ func child() {
 	}
 	check(syscall.Sethostname([]byte("litebox")))
 
-	getResourceLimits()
-	setResourceLimits(conf.CPU)
+	// getResourceLimits()
+	setResourceLimits(conf.CPU, conf.Memory, conf.Nproc)
 	getResourceLimits()
 	check(cmd.Run())
 
 }
 
 // Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
-func setResourceLimits(cpu int) {
+func setResourceLimits(cpu int, mem int, nproc int) {
 	fmt.Println("[i] Changing resource limits")
 
 	unix.Setrlimit(unix.RLIMIT_CPU, &unix.Rlimit{Cur: uint64(cpu), Max: uint64(cpu)})
-	unix.Setrlimit(unix.RLIMIT_NOFILE, &unix.Rlimit{Cur: 50, Max: 500})
+	unix.Setrlimit(unix.RLIMIT_AS, &unix.Rlimit{Cur: uint64(mem), Max: uint64(mem)})
+	unix.Setrlimit(unix.RLIMIT_NPROC, &unix.Rlimit{Cur: uint64(nproc), Max: uint64(nproc)})
 }
 
 func getResourceLimits() {
 	var getc unix.Rlimit
-	var getf unix.Rlimit
+	var getn unix.Rlimit
+	var getm unix.Rlimit
 
 	unix.Getrlimit(unix.RLIMIT_CPU, &getc)
-	unix.Getrlimit(unix.RLIMIT_NOFILE, &getf)
+	unix.Getrlimit(unix.RLIMIT_AS, &getm)
+	unix.Getrlimit(unix.RLIMIT_NPROC, &getn)
 
 	fmt.Println("CPU Limit: ", getc)
-	fmt.Println("FILE Limit: ", getf)
+	fmt.Println("Memory Limit: ", getm)
+	fmt.Println("Process Limit: ", getn)
 }
 
 func check(err error) {

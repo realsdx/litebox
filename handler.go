@@ -29,5 +29,9 @@ func HandleFlags() *Config {
 	flag.Parse()
 
 	// TODO: Check String Flags for errors
+	conf.Memory *= 1024 // convert Bytes to Kbytes
+	conf.Fsize *= 1024
+	conf.Stack *= 1024
+
 	return conf
 }
