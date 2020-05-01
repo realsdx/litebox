@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/docker/docker/pkg/reexec"
@@ -48,7 +49,12 @@ func child() {
 	fmt.Printf("child start, os.Args = %+v\t in PID: %d\n", os.Args, os.Getpid())
 	conf := HandleFlags()
 
-	cmd := exec.Command(conf.Exec)
+	// Process conf.Exec
+	c := strings.Split(conf.Exec, " ")
+	exe := c[0]
+	args := c[1:]
+
+	cmd := exec.Command(exe, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -61,8 +67,15 @@ func child() {
 	// getResourceLimits()
 	setResourceLimits(conf.CPU, conf.Memory, conf.Nproc)
 	getResourceLimits()
+
 	check(cmd.Run())
 
+	// Get memory usage after process exits
+	usage := cmd.ProcessState.SysUsage().(*syscall.Rusage)
+	fmt.Println("Memory Used: ", usage.Maxrss)
+	// Calutale Seconds in floating point
+	cpuTime := float64(usage.Stime.Usec+usage.Utime.Usec) / float64(100000) // No idea what is Usec
+	fmt.Println("CPU time(usr+sys): ", cpuTime)
 }
 
 // Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
