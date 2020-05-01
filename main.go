@@ -74,8 +74,11 @@ func child() {
 	usage := cmd.ProcessState.SysUsage().(*syscall.Rusage)
 	fmt.Println("Memory Used: ", usage.Maxrss)
 	// Calutale Seconds in floating point
-	cpuTime := float64(usage.Stime.Usec+usage.Utime.Usec) / float64(100000) // No idea what is Usec
-	fmt.Println("CPU time(usr+sys): ", cpuTime)
+	cpuTimeMicro := (usage.Stime.Sec*1000000 + usage.Stime.Usec) + (usage.Utime.Sec*1000000 + usage.Utime.Usec)
+
+	fmt.Printf("CPU time(usr+sys): %d Usec\n", cpuTimeMicro)
+	cpuTime := float64(cpuTimeMicro) / float64(1000000)
+	fmt.Printf("CPU time(usr+sys): %f Sec\n", cpuTime)
 }
 
 // Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
