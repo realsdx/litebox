@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/docker/docker/pkg/reexec"
@@ -37,7 +38,7 @@ func main() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
+		Cloneflags: syscall.CLONE_NEWUTS,
 		Pdeathsig:  syscall.SIGTERM,
 	}
 
@@ -61,24 +62,29 @@ func child() {
 	// To drop privileges to nobody, syscall.Setuid is broken, so this workaround
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Credential: &syscall.Credential{Uid: uint32(65534), Gid: uint32(65534)},
+		Pdeathsig:  syscall.SIGTERM,
 	}
 	check(syscall.Sethostname([]byte("litebox")))
 
 	// getResourceLimits()
-	setResourceLimits(conf.CPU, conf.Memory, conf.Nproc)
+	setResourceLimits(conf.CPU, conf.AS, conf.Nproc)
 	getResourceLimits()
 
-	check(cmd.Run())
+	check(cmd.Start())
+	memUsage := make(chan uint32, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go GetTotalMemoryUsage(cmd, uint32(conf.Memory), memUsage, &wg)
 
-	// Get memory usage after process exits
-	usage := cmd.ProcessState.SysUsage().(*syscall.Rusage)
-	fmt.Println("Memory Used: ", usage.Maxrss)
-	// Calutale Seconds in floating point
-	cpuTimeMicro := (usage.Stime.Sec*1000000 + usage.Stime.Usec) + (usage.Utime.Sec*1000000 + usage.Utime.Usec)
+	check(cmd.Wait())
+	fmt.Println("Process Finished")
+	wg.Wait()
 
-	fmt.Printf("CPU time(usr+sys): %d Usec\n", cpuTimeMicro)
-	cpuTime := float64(cpuTimeMicro) / float64(1000000)
-	fmt.Printf("CPU time(usr+sys): %f Sec\n", cpuTime)
+	val, open := <-memUsage
+	if open {
+		fmt.Println("Memory Usage: ", val)
+	}
+	ShowCPUTime(cmd)
 }
 
 // Not using syscall.Setrlimit it's buggy ,using unix.Setrlimit
