@@ -16,7 +16,6 @@ func init() {
 	reexec.Register("child", child)
 
 	if reexec.Init() {
-		fmt.Println("Reexec init retured non-zero")
 		os.Exit(0)
 	}
 }
