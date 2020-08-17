@@ -1,6 +1,6 @@
 # LiteBox
 
-Isolated execution enviroment for executing programs. User can set different resource limmits
+Isolated execution environment for executing programs. User can set different resource limits
 on CPU, Memory, Stack Size and File size etc. After execution get a report on Resource usage
 by the program.
 
